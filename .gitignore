@@ -1,0 +1,124 @@
+# OS-generated files
+.DS_Store
+Thumbs.db
+.pdf
+
+# IDE directories and files
+.vscode/
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+.venv
+env/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+target/
+
+# C/C++
+*.o
+*.obj
+*.exe
+*.out
+*.so
+*.dll
+*.dSYM/
+build/
+cmake-build-*/
+
+# MacOS files
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# Logs and databases
+*.log
+*.sqlite
+*.sqlite3
+
+# Environment and secret files
+.env
+.env.*
+*.pem
+*.key
+secrets.*
+
+# Compiled source
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
+
+# Temporary files
+*~
+*.tmp
+*.swp
+*.swo
+*.bak
+
+# Git
+.gitignore.swp
+
+# Docker
+*.container
+*.image
+*.tar
+*.gz
+
+# Coverage reports
+coverage/
+*.lcov
+coverage.xml
+
+# Next.js build
+.next/
+
+# React build
+build/
+dist/
+
+# Vue build
+dist/
+
+# Angular build
+dist/
+
+# Nuxt build
+.nuxt/
+
+# Gatsby build
+.cache/
+public/
+
+# Cache
+.cache
+.cache-loader
+
+# Miscellaneous
+*.orig
+*.retry
+*.log.*
