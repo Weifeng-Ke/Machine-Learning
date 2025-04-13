@@ -97,7 +97,7 @@ class PixelCNN(nn.Module):
         self.init_padding = None
 
 
-    def forward(self, x, sample=False):     
+    def forward(self, x, label, sample=False):     
         print(f"PICELCNN FORWARD X shape:{x.shape}")
         #print(f"this is label{self.label}")
         # similar as done in the tf repo :
@@ -111,9 +111,16 @@ class PixelCNN(nn.Module):
             padding = Variable(torch.ones(xs[0], 1, xs[2], xs[3]), requires_grad=False)
             padding = padding.cuda() if x.is_cuda else padding
             x = torch.cat((x, padding), 1)
-
+            
+        x = torch.cat((x, self.init_padding if not sample else torch.ones_like(self.init_padding)), dim=1)
+        # Class embedding early fusion
+        class_emb = self.class_embedding(label)  # [B, C]
+        class_emb = class_emb.unsqueeze(2).unsqueeze(3)  # [B, C, 1, 1]
+        class_emb = class_emb.expand(-1, -1, x.shape[2], x.shape[3])
+        x = torch.cat((x, class_emb), dim=1)  # [B, C+1+class_emb_dim, H, W]
+        
         ###      UP PASS    ###
-        x = x if sample else torch.cat((x, self.init_padding), 1)
+        #x = x if sample else torch.cat((x, self.init_padding), 1)
         u_list  = [self.u_init(x)]
         ul_list = [self.ul_init[0](x) + self.ul_init[1](x)]
         for i in range(3):
