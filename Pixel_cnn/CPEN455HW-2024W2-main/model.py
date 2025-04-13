@@ -1,5 +1,6 @@
 import torch.nn as nn
 from layers import *
+from dataset import my_bidict
 
 
 class PixelCNNLayer_up(nn.Module):
@@ -95,7 +96,7 @@ class PixelCNN(nn.Module):
         num_mix = 3 if self.input_channels == 1 else 10
         self.nin_out = nin(nr_filters, num_mix * nr_logistic_mix)
         self.init_padding = None
-        # Example assuming NUM_CLASSES=4 and you choose embedding_dim=nr_filters
+        # NUM_CLASSES=4 and you choose embedding_dim=32
         self.class_embedding = nn.Embedding(num_embeddings=4, embedding_dim=32)
 
     def forward(self, x, label, sample=False):     
@@ -115,7 +116,10 @@ class PixelCNN(nn.Module):
             
         x = torch.cat((x, self.init_padding if not sample else torch.ones_like(self.init_padding)), dim=1)
         # Class embedding early fusion
-        class_emb = self.class_embedding(label)  # [B, C]
+        label_indices = [my_bidict[name] for name in label]
+        # Create a LongTensor on the correct device
+        label_tensor = torch.tensor(label_indices, dtype=torch.long)
+        class_emb = self.class_embedding(label_tensor)  # [B, C]
         class_emb = class_emb.unsqueeze(2).unsqueeze(3)  # [B, C, 1, 1]
         class_emb = class_emb.expand(-1, -1, x.shape[2], x.shape[3])
         x = torch.cat((x, class_emb), dim=1)  # [B, C+1+class_emb_dim, H, W]
