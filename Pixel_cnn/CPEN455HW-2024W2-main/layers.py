@@ -130,6 +130,8 @@ class gated_resnet(nn.Module):
 
 
     def forward(self, og_x, a=None):
+        print(f"PICELCNN FORWARD og_X shape:{og_x.shape}")
+        print(f"this is og_x label{self.label}")
         x = self.conv_input(self.nonlinearity(og_x))
         if a is not None :
             x += self.nin_skip(self.nonlinearity(a))
