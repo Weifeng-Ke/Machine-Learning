@@ -95,7 +95,8 @@ class PixelCNN(nn.Module):
         num_mix = 3 if self.input_channels == 1 else 10
         self.nin_out = nin(nr_filters, num_mix * nr_logistic_mix)
         self.init_padding = None
-
+        # Example assuming NUM_CLASSES=4 and you choose embedding_dim=nr_filters
+        self.class_embedding = nn.Embedding(NUM_CLASSES=4, embedding_dim=32)
 
     def forward(self, x, label, sample=False):     
         print(f"PICELCNN FORWARD X shape:{x.shape}")
