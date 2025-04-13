@@ -174,11 +174,37 @@ def right_shift(x, pad=None):
     return pad(x)
 
 
-def sample(model, sample_batch_size, obs, sample_op):
+def sample(model, sample_batch_size, obs, sample_op,labels=None):
     model.train(False)
     with torch.no_grad():
         data = torch.zeros(sample_batch_size, obs[0], obs[1], obs[2])
         data = data.to(next(model.parameters()).device)
+        # --- Add label handling ---
+        if labels is None:
+            # Define default behavior if no labels are provided.
+            # For conditional generation, you usually *must* provide labels.
+            # Option 1: Raise an error
+            # raise ValueError("Labels must be provided for conditional sampling.")
+            # Option 2: Default to a specific label (e.g., class 0)
+            print("Warning: No labels provided for sampling, defaulting to class 0.")
+            labels = torch.zeros(sample_batch_size, dtype=torch.long, device=data.device)
+        elif not isinstance(labels, torch.Tensor):
+            # Convert labels to tensor if they aren't already
+            labels = torch.tensor(labels, dtype=torch.long, device=data.device)
+        else:
+            # Ensure labels are on the correct device
+            labels = labels.to(data.device)
+
+        # Ensure the labels tensor has the correct batch size dimension
+        if labels.shape[0] != sample_batch_size:
+            # If a single label was given, repeat it for the whole batch
+            if labels.shape[0] == 1:
+                labels = labels.expand(sample_batch_size)
+            else:
+                # Handle other mismatches (e.g., raise an error)
+                raise ValueError(f"Label tensor batch size ({labels.shape[0]}) doesn't match sample_batch_size ({sample_batch_size})")
+        # --- End label handling ---
+
         for i in range(obs[1]):
             for j in range(obs[2]):
                 data_v = data

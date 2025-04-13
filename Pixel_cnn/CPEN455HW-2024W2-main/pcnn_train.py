@@ -223,7 +223,19 @@ if __name__ == '__main__':
         
         if epoch % args.sampling_interval == 0:
             print('......sampling......')
-            sample_t = sample(model, args.sample_batch_size, args.obs, sample_op)
+            sample_batch_size = args.sample_batch_size
+            num_classes = 4 # We have classes 0, 1, 2, 3
+            if sample_batch_size % num_classes == 0:
+                samples_per_class = sample_batch_size // num_classes
+                labels_per_class = [torch.full((samples_per_class,), i, dtype=torch.long) for i in range(num_classes)]
+                sample_labels = torch.cat(labels_per_class, dim=0)
+            else:
+                # Handle cases where it's not easily divisible - maybe fall back to Option 1
+                print(f"Warning: sample_batch_size ({sample_batch_size}) not divisible by num_classes ({num_classes}). Using repeating sequence.")
+                labels_list = [i % num_classes for i in range(sample_batch_size)]
+                sample_labels = torch.tensor(labels_list, dtype=torch.long)
+            
+            sample_t = sample(model, args.sample_batch_size, args.obs, sample_op,labels=sample_labels)
             sample_t = rescaling_inv(sample_t)
             save_images(sample_t, args.sample_dir)
             sample_result = wandb.Image(sample_t, caption="epoch {}".format(epoch))
