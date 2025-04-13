@@ -118,17 +118,18 @@ class PixelCNN(nn.Module):
             
         x = torch.cat((x, self.init_padding if not sample else torch.ones_like(self.init_padding)), dim=1)
         # Class embedding early fusion
-        label_indices = [my_bidict[name] for name in label]
+        #label_indices = [my_bidict[name] for name in label]
         # Create a LongTensor on the correct device
         # Create the tensor directly on the same device as input x
-        label_tensor = torch.tensor(label_indices, dtype=torch.long, device=x.device)
+        #label_tensor = torch.tensor(label_indices, dtype=torch.long, device=x.device)
+        label_tensor=label.to(x.device)
         class_emb = self.class_embedding(label_tensor)  # [B, C]
         class_emb = class_emb.unsqueeze(2).unsqueeze(3)  # [B, C, 1, 1]
         class_emb = class_emb.expand(-1, -1, x.shape[2], x.shape[3])
         x = torch.cat((x, class_emb), dim=1)  # [B, C+1+class_emb_dim, H, W]
         
         ###      UP PASS    ###
-        #x = x if sample else torch.cat((x, self.init_padding), 1)
+        x = x if sample else torch.cat((x, self.init_padding), 1)
         u_list  = [self.u_init(x)]
         ul_list = [self.ul_init[0](x) + self.ul_init[1](x)]
         for i in range(3):
