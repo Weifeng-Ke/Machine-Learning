@@ -99,7 +99,7 @@ class PixelCNN(nn.Module):
 
     def forward(self, x, sample=False):     
         print(f"PICELCNN FORWARD X shape:{x.shape}")
-        print(f"this is label{self.label}")
+        #print(f"this is label{self.label}")
         # similar as done in the tf repo :
         if self.init_padding is not sample:
             xs = [int(y) for y in x.size()]
