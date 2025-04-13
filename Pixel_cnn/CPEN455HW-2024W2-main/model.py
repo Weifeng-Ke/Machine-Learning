@@ -120,7 +120,8 @@ class PixelCNN(nn.Module):
         # Class embedding early fusion
         label_indices = [my_bidict[name] for name in label]
         # Create a LongTensor on the correct device
-        label_tensor = torch.tensor(label_indices, dtype=torch.long)
+        # Create the tensor directly on the same device as input x
+        label_tensor = torch.tensor(label_indices, dtype=torch.long, device=x.device)
         class_emb = self.class_embedding(label_tensor)  # [B, C]
         class_emb = class_emb.unsqueeze(2).unsqueeze(3)  # [B, C, 1, 1]
         class_emb = class_emb.expand(-1, -1, x.shape[2], x.shape[3])
