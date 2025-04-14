@@ -23,9 +23,21 @@ NUM_CLASSES = len(my_bidict)
 #TODO: Begin of your code
 def get_label(model, model_input, device):
     # Write your code here, replace the random classifier with your trained model
+    loss_op   = lambda real, fake : discretized_mix_logistic_loss(real, fake)
+    answers=[]
+    for image in model_input:
+        lost_list=[]
+        image_batch = image.unsqueeze(0)
+        for i in range(NUM_CLASSES):
+            label_tensor=torch.tensor([i],dtype=torch.long, device=device)
+            model_output=model(image_batch,labels=label_tensor, sample=False)
+            lost=loss_op(image_batch,model_output)
+            lost_list.append(lost.item())
+        answers.append(np.argmin(lost_list))        
+    #model_output = model(model_input)
     # and return the predicted label, which is a tensor of shape (batch_size,)
-    answer = model(model_input, device)
-    return answer
+    #answer = model(model_input, device)
+    return torch.tensor(answers).to(device)
 # End of your code
 
 def classifier(model, data_loader, device):
@@ -68,8 +80,13 @@ if __name__ == '__main__':
 
     #TODO:Begin of your code
     #You should replace the random classifier with your trained model
-    model = random_classifier(NUM_CLASSES)
+    #model = random_classifier(NUM_CLASSES)
+    input_channels=3
+    model = PixelCNN(nr_resnet=3, nr_filters=100, 
+                input_channels=input_channels, nr_logistic_mix=20, embedding_dim=32)
+    
     #End of your code
+
     
     model = model.to(device)
     #Attention: the path of the model is fixed to './models/conditional_pixelcnn.pth'
