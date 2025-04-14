@@ -257,11 +257,11 @@ if __name__ == '__main__':
                  # Save and log combined samples
                  save_images(final_samples, args.sample_dir, label=f"epoch_{epoch}")
                  if args.en_wandb:
-                     try: # Add try-except for robustness if final_samples might be empty
-                         sample_result = wandb.Image(final_samples, caption="epoch {}".format(epoch))
-                         wandb.log({"samples": sample_result, "samples-epoch": epoch})
-                     except Exception as e:
-                         print(f"WandB logging failed for samples: {e}")
+                    try: # Add try-except for robustness if final_samples might be empty
+                        sample_result = wandb.Image(final_samples, caption="epoch {}".format(epoch))
+                        wandb.log({"samples": sample_result, "samples-epoch": epoch})
+                    except Exception as e:
+                        print(f"WandB logging failed for samples: {e}")
                          
             # sample_t = sample(model, args.sample_batch_size, args.obs, sample_op)
             # sample_t = rescaling_inv(sample_t)
