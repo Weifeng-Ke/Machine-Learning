@@ -29,7 +29,7 @@ def get_label(model, model_input, device):
         lost_list=[]
         image_batch = image.unsqueeze(0)
         for i in range(NUM_CLASSES):
-            model_output=model(image_batch,i)
+            model_output=model(image_batch,i, sample=False)
             lost=loss_op(image_batch,model_output)
             lost_list.append(lost.item())
         answers.append(np.argmin(lost_list))        
