@@ -24,11 +24,11 @@ def train_or_test(model, data_loader, optimizer, loss_op, device, args, epoch, m
     loss_tracker = mean_tracker()
     
     for batch_idx, item in enumerate(tqdm(data_loader)):
-        model_input, label = item
+        model_input, label_name = item
         model_input = model_input.to(device)
         
         # Convert label strings (e.g., "Class0") to their corresponding integers using my_bidict.
-        label = torch.tensor([my_bidict[lbl] for lbl in label], dtype=torch.long).to(device)
+        label = torch.tensor([my_bidict[lbl] for lbl in label_name], dtype=torch.long).to(device)
         # Now pass both the image and label into the model.
         model_output = model(model_input, label)
         #model_output = model(model_input)
@@ -186,7 +186,7 @@ if __name__ == '__main__':
     sample_op = lambda x : sample_from_discretized_mix_logistic(x, args.nr_logistic_mix)
 
     model = PixelCNN(nr_resnet=args.nr_resnet, nr_filters=args.nr_filters, 
-                input_channels=input_channels, nr_logistic_mix=args.nr_logistic_mix,embedding_dim=32)
+                input_channels=input_channels, nr_logistic_mix=args.nr_logistic_mix)
     model = model.to(device)
 
     if args.load_params:
@@ -228,10 +228,33 @@ if __name__ == '__main__':
         
         if epoch % args.sampling_interval == 0:
             print('......sampling......')
-            sample_t = sample(model, args.sample_batch_size, args.obs, sample_op)
-            sample_t = rescaling_inv(sample_t)
-            save_images(sample_t, args.sample_dir)
-            sample_result = wandb.Image(sample_t, caption="epoch {}".format(epoch))
+            model.eval()
+            samples_per_class = args.sample_batch_size//4
+            all_samples = []
+            with torch.no_grad():
+                for class_label in range(4):
+                    labels_to_sample = torch.full((samples_per_class,), class_label, dtype=torch.long).to(device)
+                    # Generate samples conditioned on these labels
+                    data = torch.zeros(samples_per_class, args.obs[0], args.obs[1], args.obs[2]).to(device)
+                    for i in range(args.obs[1]):
+                        for j in range(args.obs[2]):
+                            out = model(data, labels=labels_to_sample, sample=True) # Pass labels
+                            out_sample = sample_op(out)
+                            data[:, :, i, j] = out_sample.data[:, :, i, j]
+                    sample_t = data
+                    
+                    #sample_t = sample(model, args.sample_batch_size, args.obs, sample_op)
+                    sample_t = rescaling_inv(sample_t)
+                    all_samples.append(sample_t)
+            # Combine samples from all classes
+            final_samples = torch.cat(all_samples, dim=0)        
+            #save_images(sample_t, args.sample_dir)
+            # Save and log combined samples
+            save_images(final_samples, args.sample_dir, label=f"epoch_{epoch}") # Save with epoch number
+            if args.en_wandb:
+                #sample_result = wandb.Image(sample_t, caption="epoch {}".format(epoch))
+                sample_result = wandb.Image(final_samples, caption="epoch {}".format(epoch))
+                wandb.log({"samples": sample_result, "samples-epoch": epoch}) # Log samples with epoch
             
             gen_data_dir = args.sample_dir
             ref_data_dir = args.data_dir +'/test'
