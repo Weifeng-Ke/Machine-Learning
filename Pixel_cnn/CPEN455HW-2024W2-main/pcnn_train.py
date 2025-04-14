@@ -26,7 +26,12 @@ def train_or_test(model, data_loader, optimizer, loss_op, device, args, epoch, m
     for batch_idx, item in enumerate(tqdm(data_loader)):
         model_input, label = item
         model_input = model_input.to(device)
-        model_output = model(model_input)
+        
+        # Convert label strings (e.g., "Class0") to their corresponding integers using my_bidict.
+        label = torch.tensor([my_bidict[lbl] for lbl in label], dtype=torch.long).to(device)
+        # Now pass both the image and label into the model.
+        model_output = model(model_input, label)
+        #model_output = model(model_input)
         loss = loss_op(model_input, model_output)
         loss_tracker.update(loss.item()/deno)
         if mode == 'training':

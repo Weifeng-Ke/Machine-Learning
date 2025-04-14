@@ -58,7 +58,9 @@ class PixelCNN(nn.Module):
             self.resnet_nonlinearity = lambda x : concat_elu(x)
         else :
             raise Exception('right now only concat elu is supported as resnet nonlinearity.')
-
+        
+        self.label_embedding = nn.Embedding(4,1)
+        
         self.nr_filters = nr_filters
         self.input_channels = input_channels
         self.nr_logistic_mix = nr_logistic_mix
@@ -97,9 +99,14 @@ class PixelCNN(nn.Module):
         self.init_padding = None
 
 
-    def forward(self, x, sample=False):     
-        print(f"PICELCNN FORWARD X shape:{x.shape}")
-        print(f"this is label{self.label}")
+    def forward(self, x, label,sample=False):     
+        #try early fution 
+        # # The label (a tensor of shape (batch,)) is embedded into a (batch, 1) tensor
+        # and then reshaped and expanded to form a spatial map with the same height and width as x.
+        cond = self.label_embedding(label).view(-1, 1, x.size(2), x.size(3))
+        # Concatenate the conditional channel with the input image along the channel dimension.
+        x = torch.cat((x, cond), 1)
+        
         # similar as done in the tf repo :
         if self.init_padding is not sample:
             xs = [int(y) for y in x.size()]
