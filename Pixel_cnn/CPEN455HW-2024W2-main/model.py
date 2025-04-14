@@ -1,6 +1,8 @@
 import torch.nn as nn
 from layers import *
-
+import torch.nn.functional as F
+from utils import *
+from dataset import my_bidict
 
 class PixelCNNLayer_up(nn.Module):
     def __init__(self, nr_resnet, nr_filters, resnet_nonlinearity):
@@ -52,7 +54,7 @@ class PixelCNNLayer_down(nn.Module):
 
 class PixelCNN(nn.Module):
     def __init__(self, nr_resnet=5, nr_filters=80, nr_logistic_mix=10,
-                    resnet_nonlinearity='concat_elu', input_channels=3):
+                    resnet_nonlinearity='concat_elu', input_channels=3,embedding_dim=32):
         super(PixelCNN, self).__init__()
         if resnet_nonlinearity == 'concat_elu' :
             self.resnet_nonlinearity = lambda x : concat_elu(x)
@@ -66,7 +68,15 @@ class PixelCNN(nn.Module):
         self.nr_logistic_mix = nr_logistic_mix
         self.right_shift_pad = nn.ZeroPad2d((1, 0, 0, 0))
         self.down_shift_pad  = nn.ZeroPad2d((0, 0, 1, 0))
-
+        # --- Start: Added for Conditional Generation ---
+        self.embedding_dim = embedding_dim
+        self.label_embedding = nn.Embedding(num_embeddings=4, embedding_dim=self.embedding_dim)
+        # Adjust the initial convolutions to accept the concatenated input + embedding features
+        # The input channels for u_init and ul_init need to account for the embedding dimension
+        # Original input_channels + 1 (for padding) + embedding_dim
+        init_input_channels = input_channels + 1 + self.embedding_dim
+        # --- End: Added for Conditional Generation ---
+        
         down_nr_resnet = [nr_resnet] + [nr_resnet + 1] * 2
         self.down_layers = nn.ModuleList([PixelCNNLayer_down(down_nr_resnet[i], nr_filters,
                                                 self.resnet_nonlinearity) for i in range(3)])
@@ -86,12 +96,12 @@ class PixelCNN(nn.Module):
         self.upsize_ul_stream = nn.ModuleList([down_right_shifted_deconv2d(nr_filters,
                                                     nr_filters, stride=(2,2)) for _ in range(2)])
 
-        self.u_init = down_shifted_conv2d(input_channels + 1, nr_filters, filter_size=(2,3),
+        self.u_init = down_shifted_conv2d(init_input_channels, nr_filters, filter_size=(2,3),
                         shift_output_down=True)
 
-        self.ul_init = nn.ModuleList([down_shifted_conv2d(input_channels + 1, nr_filters,
+        self.ul_init = nn.ModuleList([down_shifted_conv2d(init_input_channels, nr_filters,
                                             filter_size=(1,3), shift_output_down=True),
-                                       down_right_shifted_conv2d(input_channels + 1, nr_filters,
+                                       down_right_shifted_conv2d(init_input_channels, nr_filters,
                                             filter_size=(2,1), shift_output_right=True)])
 
         num_mix = 3 if self.input_channels == 1 else 10
@@ -99,14 +109,8 @@ class PixelCNN(nn.Module):
         self.init_padding = None
 
 
-    def forward(self, x, label,sample=False):     
+    def forward(self, x, labels,sample=False):     
         #try early fution 
-        # # The label (a tensor of shape (batch,)) is embedded into a (batch, 1) tensor
-        # and then reshaped and expanded to form a spatial map with the same height and width as x.
-        cond = self.label_embedding(label).view(-1, 1, x.size(2), x.size(3))
-        # Concatenate the conditional channel with the input image along the channel dimension.
-        x = torch.cat((x, cond), 1)
-        
         # similar as done in the tf repo :
         if self.init_padding is not sample:
             xs = [int(y) for y in x.size()]
@@ -118,7 +122,25 @@ class PixelCNN(nn.Module):
             padding = Variable(torch.ones(xs[0], 1, xs[2], xs[3]), requires_grad=False)
             padding = padding.cuda() if x.is_cuda else padding
             x = torch.cat((x, padding), 1)
+        
+        # --- Start: Early Fusion Implementation (around original line 100 location's usage) ---
+        # 1. Get label embeddings
+        label_emb = self.label_embedding(labels) # (batch_size, embedding_dim)
 
+        # 2. Reshape embeddings to match spatial dimensions (H, W) of x
+        # Add spatial dimensions HxW, result shape: (batch_size, embedding_dim, 1, 1)
+        label_emb = label_emb.unsqueeze(-1).unsqueeze(-1)
+        # Expand embedding to match the height and width of the input image x
+        # Target shape: (batch_size, embedding_dim, H, W)
+        label_emb = label_emb.expand(-1, -1, x.size(2), x.size(3))
+
+        # 3. Concatenate reshaped embedding with the input x
+        # x shape is (batch_size, input_channels + 1, H, W)
+        # label_emb shape is (batch_size, embedding_dim, H, W)
+        # Result shape: (batch_size, input_channels + 1 + embedding_dim, H, W)
+        x = torch.cat((x, label_emb), dim=1) # Concatenate along the channel dimension
+        # --- End: Early Fusion Implementation ---
+        
         ###      UP PASS    ###
         x = x if sample else torch.cat((x, self.init_padding), 1)
         u_list  = [self.u_init(x)]
