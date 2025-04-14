@@ -24,9 +24,12 @@ def train_or_test(model, data_loader, optimizer, loss_op, device, args, epoch, m
     loss_tracker = mean_tracker()
     
     for batch_idx, item in enumerate(tqdm(data_loader)):
-        model_input, label = item
+        model_input, label_names = item
         model_input = model_input.to(device)
-        model_output = model(model_input)
+        
+        numerical_labels = torch.tensor([my_bidict[name] for name in label_names], dtype=torch.long).to(device)
+        model_output = model(model_input, numerical_labels)
+        #model_output = model(model_input)
         loss = loss_op(model_input, model_output)
         loss_tracker.update(loss.item()/deno)
         if mode == 'training':
@@ -181,7 +184,7 @@ if __name__ == '__main__':
     sample_op = lambda x : sample_from_discretized_mix_logistic(x, args.nr_logistic_mix)
 
     model = PixelCNN(nr_resnet=args.nr_resnet, nr_filters=args.nr_filters, 
-                input_channels=input_channels, nr_logistic_mix=args.nr_logistic_mix)
+                input_channels=input_channels, nr_logistic_mix=args.nr_logistic_mix, embedding_dim=32)
     model = model.to(device)
 
     if args.load_params:
@@ -203,7 +206,7 @@ if __name__ == '__main__':
         
         # decrease learning rate
         scheduler.step()
-        train_or_test(model = model,
+        """train_or_test(model = model,
                       data_loader = test_loader,
                       optimizer = optimizer,
                       loss_op = loss_op,
@@ -211,7 +214,7 @@ if __name__ == '__main__':
                       args = args,
                       epoch = epoch,
                       mode = 'test')
-        
+        """
         train_or_test(model = model,
                       data_loader = val_loader,
                       optimizer = optimizer,

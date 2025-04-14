@@ -1,6 +1,11 @@
+import torch
 import torch.nn as nn
+import torch.nn.functional as F
+from torch.autograd import Variable
 from layers import *
+from dataset import my_bidict #<-- Added import
 
+NUM_CLASSES = len(my_bidict)
 
 class PixelCNNLayer_up(nn.Module):
     def __init__(self, nr_resnet, nr_filters, resnet_nonlinearity):
@@ -52,7 +57,7 @@ class PixelCNNLayer_down(nn.Module):
 
 class PixelCNN(nn.Module):
     def __init__(self, nr_resnet=5, nr_filters=80, nr_logistic_mix=10,
-                    resnet_nonlinearity='concat_elu', input_channels=3):
+                    resnet_nonlinearity='concat_elu', input_channels=3,embedding_dim=32):
         super(PixelCNN, self).__init__()
         if resnet_nonlinearity == 'concat_elu' :
             self.resnet_nonlinearity = lambda x : concat_elu(x)
@@ -65,6 +70,17 @@ class PixelCNN(nn.Module):
         self.right_shift_pad = nn.ZeroPad2d((1, 0, 0, 0))
         self.down_shift_pad  = nn.ZeroPad2d((0, 0, 1, 0))
 
+        # --- Start: Added for Conditioning ---
+        self.embedding_dim = embedding_dim
+        self.label_embedding = nn.Embedding(NUM_CLASSES, self.embedding_dim)
+        # Add a projection layer if embedding_dim is different from nr_filters
+        if self.embedding_dim != self.nr_filters:
+             self.embedding_projection = nn.Linear(self.embedding_dim, self.nr_filters)
+        else:
+             self.embedding_projection = nn.Identity() # Use Identity if dims match
+        # --- End: Added for Conditioning ---
+        
+        
         down_nr_resnet = [nr_resnet] + [nr_resnet + 1] * 2
         self.down_layers = nn.ModuleList([PixelCNNLayer_down(down_nr_resnet[i], nr_filters,
                                                 self.resnet_nonlinearity) for i in range(3)])
@@ -97,9 +113,8 @@ class PixelCNN(nn.Module):
         self.init_padding = None
 
 
-    def forward(self, x, sample=False):     
-        print(f"PICELCNN FORWARD X shape:{x.shape}")
-        print(f"this is label{self.label}")
+    def forward(self, x, labels, sample=False):     
+
         # similar as done in the tf repo :
         if self.init_padding is not sample:
             xs = [int(y) for y in x.size()]
@@ -111,14 +126,34 @@ class PixelCNN(nn.Module):
             padding = Variable(torch.ones(xs[0], 1, xs[2], xs[3]), requires_grad=False)
             padding = padding.cuda() if x.is_cuda else padding
             x = torch.cat((x, padding), 1)
-
+            
         ###      UP PASS    ###
         x = x if sample else torch.cat((x, self.init_padding), 1)
+        
+        # --- Get Projected and Reshaped Embedding Once ---
+        label_emb = self.label_embedding(labels) # (B, E)
+        proj_emb = self.embedding_projection(label_emb) # (B, nr_filters)
+        # Reshape for broadcasting later: add spatial dims
+        proj_emb_spatial = proj_emb.unsqueeze(-1).unsqueeze(-1) # (B, nr_filters, 1, 1)
+        # --- End Embedding Prep ---
+        
         u_list  = [self.u_init(x)]
         ul_list = [self.ul_init[0](x) + self.ul_init[1](x)]
         for i in range(3):
+            # --- Inject Condition at the START of the block ---
+            # Expand embedding to match current feature map size
+            u_curr = u_list[-1]
+            ul_curr = ul_list[-1]
+            H, W = u_curr.size(2), u_curr.size(3)
+            label_emb_expanded = proj_emb_spatial.expand(-1, -1, H, W) # (B, nr_filters, H, W)
+
+            u_cond = u_curr + label_emb_expanded
+            ul_cond = ul_curr + label_emb_expanded
+            # --- End Injection ---
+            
+            
             # resnet block
-            u_out, ul_out = self.up_layers[i](u_list[-1], ul_list[-1])
+            u_out, ul_out = self.up_layers[i](u_cond, ul_cond)
             u_list  += u_out
             ul_list += ul_out
 
@@ -132,8 +167,16 @@ class PixelCNN(nn.Module):
         ul = ul_list.pop()
 
         for i in range(3):
+            # --- Inject Condition at the START of the block ---
+            # Expand embedding to match current feature map size
+            H, W = u.size(2), u.size(3)
+            label_emb_expanded = proj_emb_spatial.expand(-1, -1, H, W) # (B, nr_filters, H, W)
+
+            u_cond = u + label_emb_expanded
+            ul_cond = ul + label_emb_expanded
+            # --- End Injection ---
             # resnet block
-            u, ul = self.down_layers[i](u, ul, u_list, ul_list)
+            u, ul = self.down_layers[i](u_cond, ul_cond, u_list, ul_list)
 
             # upscale (only twice)
             if i != 2 :
