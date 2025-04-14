@@ -82,15 +82,15 @@ if __name__ == '__main__':
     #You should replace the random classifier with your trained model
     #model = random_classifier(NUM_CLASSES)
     input_channels=3
-    model = PixelCNN(nr_resnet=1, nr_filters=80, 
-                input_channels=input_channels, nr_logistic_mix=5, embedding_dim=32)
+    model = PixelCNN(nr_resnet=3, nr_filters=100, 
+                input_channels=input_channels, nr_logistic_mix=20, embedding_dim=32)
     
     #End of your code
     
     model = model.to(device)
     #Attention: the path of the model is fixed to './models/conditional_pixelcnn.pth'
     #You should save your model to this path
-    model_path = os.path.join(os.path.dirname(__file__), 'models/conditional_pixelcnn1.pth')
+    model_path = os.path.join(os.path.dirname(__file__), 'models/conditional_pixelcnn2.pth')
     if os.path.exists(model_path):
         model.load_state_dict(torch.load(model_path))
         print('model parameters loaded')
