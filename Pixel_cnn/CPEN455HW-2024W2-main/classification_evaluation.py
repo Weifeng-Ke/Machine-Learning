@@ -80,8 +80,8 @@ if __name__ == '__main__':
     #You should replace the random classifier with your trained model
     #model = random_classifier(NUM_CLASSES)
     input_channels=3
-    model = PixelCNN(nr_resnet=args.nr_resnet, nr_filters=args.nr_filters, 
-                input_channels=input_channels, nr_logistic_mix=args.nr_logistic_mix, embedding_dim=32)
+    model = PixelCNN(nr_resnet=1, nr_filters=80, 
+                input_channels=input_channels, nr_logistic_mix=10, embedding_dim=32)
     
     #End of your code
     
