@@ -28,6 +28,7 @@ def train_or_test(model, data_loader, optimizer, loss_op, device, args, epoch, m
         model_input = model_input.to(device)
         
         numerical_labels = torch.tensor([my_bidict[name] for name in label_names], dtype=torch.long).to(device)
+        print(f"label is {numerical_labels}")
         model_output = model(model_input, numerical_labels)
         #model_output = model(model_input)
         loss = loss_op(model_input, model_output)
@@ -246,7 +247,7 @@ if __name__ == '__main__':
                                       sample_batch_size=samples_per_class, # Generate for one class batch size
                                       obs=args.obs,
                                       sample_op=sample_op,
-                                      labels=labels_to_sample) # <-- Pass the labels
+                                      labels=labels_to_sample)
 
                     sample_t = rescaling_inv(sample_t)
                     all_samples.append(sample_t)

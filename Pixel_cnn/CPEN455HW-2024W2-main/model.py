@@ -113,7 +113,7 @@ class PixelCNN(nn.Module):
         self.init_padding = None
 
 
-    def forward(self, x, labels, sample=False):     
+    def forward(self, x, labels=None, sample=False):     
 
         # similar as done in the tf repo :
         if self.init_padding is not sample:
@@ -129,7 +129,7 @@ class PixelCNN(nn.Module):
             
         ###      UP PASS    ###
         x = x if sample else torch.cat((x, self.init_padding), 1)
-        
+
         # --- Get Projected and Reshaped Embedding Once ---
         label_emb = self.label_embedding(labels) # (B, E)
         proj_emb = self.embedding_projection(label_emb) # (B, nr_filters)
