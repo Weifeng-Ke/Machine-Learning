@@ -28,7 +28,7 @@ def train_or_test(model, data_loader, optimizer, loss_op, device, args, epoch, m
         model_input = model_input.to(device)
         
         numerical_labels = torch.tensor([my_bidict[name] for name in label_names], dtype=torch.long).to(device)
-        print(f"label is {numerical_labels}")
+        #print(f"label is {numerical_labels}")
         model_output = model(model_input, numerical_labels)
         #model_output = model(model_input)
         loss = loss_op(model_input, model_output)
