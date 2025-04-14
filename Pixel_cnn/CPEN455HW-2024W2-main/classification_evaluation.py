@@ -88,7 +88,7 @@ if __name__ == '__main__':
     model = model.to(device)
     #Attention: the path of the model is fixed to './models/conditional_pixelcnn.pth'
     #You should save your model to this path
-    model_path = os.path.join(os.path.dirname(__file__), 'models/conditional_pixelcnn.pth')
+    model_path = os.path.join(os.path.dirname(__file__), 'models/conditional_pixelcnn1.pth')
     if os.path.exists(model_path):
         model.load_state_dict(torch.load(model_path))
         print('model parameters loaded')
