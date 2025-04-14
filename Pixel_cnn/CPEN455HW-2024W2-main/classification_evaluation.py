@@ -24,18 +24,19 @@ NUM_CLASSES = len(my_bidict)
 def get_label(model, model_input, device):
     # Write your code here, replace the random classifier with your trained model
     loss_op   = lambda real, fake : discretized_mix_logistic_loss(real, fake)
-    answer=[]
+    answers=[]
     for image in model_input:
         lost_list=[]
+        image_batch = image.unsqueeze(0)
         for i in range(NUM_CLASSES):
-            model_output=model(image,i)
-            lost=loss_op(image,model_output)
-            lost_list.append(lost)
-        answer.append(np.argmin(lost_list) for l in lost_list)        
+            model_output=model(image_batch,i)
+            lost=loss_op(image_batch,model_output)
+            lost_list.append(lost.item())
+        answers.append(np.argmin(lost_list))        
     #model_output = model(model_input)
     # and return the predicted label, which is a tensor of shape (batch_size,)
     #answer = model(model_input, device)
-    return torch.tensor(answer).to(device)
+    return torch.tensor(answers).to(device)
 # End of your code
 
 def classifier(model, data_loader, device):
