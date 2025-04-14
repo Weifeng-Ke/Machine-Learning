@@ -24,9 +24,11 @@ def train_or_test(model, data_loader, optimizer, loss_op, device, args, epoch, m
     loss_tracker = mean_tracker()
     
     for batch_idx, item in enumerate(tqdm(data_loader)):
-        model_input, label = item
+        model_input, label_names = item
         model_input = model_input.to(device)
-        model_output = model(model_input)
+        numerical_labels = torch.tensor([my_bidict[name] for name in label_names], dtype=torch.long).to(device)
+        model_output = model(model_input, numerical_labels) # Pass labels
+        #model_output = model(model_input)
         loss = loss_op(model_input, model_output)
         loss_tracker.update(loss.item()/deno)
         if mode == 'training':
@@ -181,7 +183,7 @@ if __name__ == '__main__':
     sample_op = lambda x : sample_from_discretized_mix_logistic(x, args.nr_logistic_mix)
 
     model = PixelCNN(nr_resnet=args.nr_resnet, nr_filters=args.nr_filters, 
-                input_channels=input_channels, nr_logistic_mix=args.nr_logistic_mix)
+                input_channels=input_channels, nr_logistic_mix=args.nr_logistic_mix,embedding_dim=32)
     model = model.to(device)
 
     if args.load_params:
@@ -203,7 +205,7 @@ if __name__ == '__main__':
         
         # decrease learning rate
         scheduler.step()
-        train_or_test(model = model,
+        """train_or_test(model = model,
                       data_loader = test_loader,
                       optimizer = optimizer,
                       loss_op = loss_op,
@@ -211,7 +213,7 @@ if __name__ == '__main__':
                       args = args,
                       epoch = epoch,
                       mode = 'test')
-        
+        """
         train_or_test(model = model,
                       data_loader = val_loader,
                       optimizer = optimizer,
@@ -223,10 +225,48 @@ if __name__ == '__main__':
         
         if epoch % args.sampling_interval == 0:
             print('......sampling......')
-            sample_t = sample(model, args.sample_batch_size, args.obs, sample_op)
-            sample_t = rescaling_inv(sample_t)
-            save_images(sample_t, args.sample_dir)
-            sample_result = wandb.Image(sample_t, caption="epoch {}".format(epoch))
+            model.eval()
+            samples_per_class = args.sample_batch_size // NUM_CLASSES # Calculate samples per class
+            if samples_per_class == 0:
+                print(f"Warning: sample_batch_size ({args.sample_batch_size}) is less than NUM_CLASSES ({NUM_CLASSES}). Sampling only for first class.")
+                samples_per_class = args.sample_batch_size # Sample all for first class if batch size is too small
+                num_classes_to_sample = 1
+            else:
+                 num_classes_to_sample = NUM_CLASSES
+            
+            all_samples = []
+            with torch.no_grad():
+                for class_label in range(num_classes_to_sample): # Loop through desired classes
+                    # Create labels for the current class
+                    labels_to_sample = torch.full((samples_per_class,), class_label, dtype=torch.long).to(device) # Ensure on correct device
+
+                    # Call the updated sample function with labels
+                    sample_t = sample(model=model,
+                                      sample_batch_size=samples_per_class, # Generate for one class batch size
+                                      obs=args.obs,
+                                      sample_op=sample_op,
+                                      labels=labels_to_sample) 
+                    
+                    sample_t = rescaling_inv(sample_t)
+                    all_samples.append(sample_t)
+
+            # Combine samples from all classes if multiple were generated
+            if all_samples:
+                 final_samples = torch.cat(all_samples, dim=0)
+
+                 # Save and log combined samples
+                 save_images(final_samples, args.sample_dir, label=f"epoch_{epoch}")
+                 if args.en_wandb:
+                     try: # Add try-except for robustness if final_samples might be empty
+                         sample_result = wandb.Image(final_samples, caption="epoch {}".format(epoch))
+                         wandb.log({"samples": sample_result, "samples-epoch": epoch})
+                     except Exception as e:
+                         print(f"WandB logging failed for samples: {e}")
+                         
+            # sample_t = sample(model, args.sample_batch_size, args.obs, sample_op)
+            # sample_t = rescaling_inv(sample_t)
+            # save_images(sample_t, args.sample_dir)
+            # sample_result = wandb.Image(sample_t, caption="epoch {}".format(epoch))
             
             gen_data_dir = args.sample_dir
             ref_data_dir = args.data_dir +'/test'

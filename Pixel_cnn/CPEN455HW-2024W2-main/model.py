@@ -1,5 +1,11 @@
+import torch
 import torch.nn as nn
+import torch.nn.functional as F
+from torch.autograd import Variable
 from layers import *
+from dataset import my_bidict #<-- Added import
+
+NUM_CLASSES = len(my_bidict)
 
 
 class PixelCNNLayer_up(nn.Module):
@@ -52,7 +58,7 @@ class PixelCNNLayer_down(nn.Module):
 
 class PixelCNN(nn.Module):
     def __init__(self, nr_resnet=5, nr_filters=80, nr_logistic_mix=10,
-                    resnet_nonlinearity='concat_elu', input_channels=3):
+                    resnet_nonlinearity='concat_elu', input_channels=3,embedding_dim=32):
         super(PixelCNN, self).__init__()
         if resnet_nonlinearity == 'concat_elu' :
             self.resnet_nonlinearity = lambda x : concat_elu(x)
@@ -65,6 +71,16 @@ class PixelCNN(nn.Module):
         self.right_shift_pad = nn.ZeroPad2d((1, 0, 0, 0))
         self.down_shift_pad  = nn.ZeroPad2d((0, 0, 1, 0))
 
+        # --- Start: Added for Conditioning ---
+        self.embedding_dim = embedding_dim
+        self.label_embedding = nn.Embedding(NUM_CLASSES, self.embedding_dim)
+        # Add a projection layer if embedding_dim is different from nr_filters
+        if self.embedding_dim != self.nr_filters:
+             self.embedding_projection = nn.Linear(self.embedding_dim, self.nr_filters)
+        else:
+             self.embedding_projection = nn.Identity() # Use Identity if dims match
+        # --- End: Added for Conditioning ---
+        
         down_nr_resnet = [nr_resnet] + [nr_resnet + 1] * 2
         self.down_layers = nn.ModuleList([PixelCNNLayer_down(down_nr_resnet[i], nr_filters,
                                                 self.resnet_nonlinearity) for i in range(3)])
@@ -97,7 +113,7 @@ class PixelCNN(nn.Module):
         self.init_padding = None
 
 
-    def forward(self, x, sample=False):     
+    def forward(self, x, labels, sample=False):     
         print(f"PICELCNN FORWARD X shape:{x.shape}")
         print(f"this is label{self.label}")
         # similar as done in the tf repo :
@@ -140,7 +156,22 @@ class PixelCNN(nn.Module):
                 u  = self.upsize_u_stream[i](u)
                 ul = self.upsize_ul_stream[i](ul)
 
-        x_out = self.nin_out(F.elu(ul))
+        # --- Start: Late Fusion Implementation ---
+        # Get projected embedding
+        label_emb = self.label_embedding(labels)           # (B, E)
+        proj_emb = self.embedding_projection(label_emb)    # (B, nr_filters)
+
+        # Reshape embedding to match spatial dimensions of 'ul'
+        H, W = ul.size(2), ul.size(3)
+        proj_emb_spatial = proj_emb.unsqueeze(-1).unsqueeze(-1) # (B, nr_filters, 1, 1)
+        label_emb_expanded = proj_emb_spatial.expand(-1, -1, H, W) # (B, nr_filters, H, W)
+
+        # Add embedding to 'ul' *before* final activation and output layer
+        ul_conditioned = ul + label_emb_expanded
+        # --- End: Late Fusion Implementation ---
+        # Apply final activation and output layer to the *conditioned* features
+        x_out = self.nin_out(F.elu(ul_conditioned))
+        #x_out = self.nin_out(F.elu(ul))
 
         assert len(u_list) == len(ul_list) == 0, pdb.set_trace()
 
