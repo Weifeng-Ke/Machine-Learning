@@ -171,7 +171,7 @@ if __name__ == '__main__':
                              f"does not match the number of rows in '{csv_path}' ({len(df)}).")
 
         df.iloc[:, 1] = labels_array
-        df.to_csv(csv_path, index=False)
+        df.to_csv(csv_path, index=False, header=False)
         print(f"Successfully updated '{csv_path}' with predicted labels.")
 
     except FileNotFoundError:
