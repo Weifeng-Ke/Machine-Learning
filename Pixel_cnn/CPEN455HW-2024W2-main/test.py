@@ -18,6 +18,7 @@ from tqdm import tqdm
 from pprint import pprint
 import argparse
 import csv
+import pandas as pd
 NUM_CLASSES = len(my_bidict)
 
 #TODO: Begin of your code
@@ -49,10 +50,11 @@ def classifier(model, data_loader, device):
         original_label = [my_bidict[item] for item in categories]
         original_label = torch.tensor(original_label, dtype=torch.int64).to(device)
         answer = get_label(model, model_input, device)
+        
         correct_num = torch.sum(answer == original_label)
         acc_tracker.update(correct_num.item(), model_input.shape[0])
     
-    return acc_tracker.get_ratio()
+    return acc_tracker.get_ratio(),answer
 
         
 
@@ -100,46 +102,21 @@ if __name__ == '__main__':
         raise FileNotFoundError(f"Model file not found at {model_path}")
     model.eval()
     
-    acc = classifier(model = model, data_loader = dataloader, device = device)
+    acc,label_tensor = classifier(model = model, data_loader = dataloader, device = device)
     print(f"Accuracy: {acc}")
+    
+    #predicted_labels=label_tensor.tolist()
 
-    # Create a new instance of the dataset in test (or validation) mode.
-    # It is assumed that your CPEN455Dataset has an attribute 'files' that stores
-    # the file path (name path) for each sample. If not, modify your dataset class accordingly.
-    test_dataset = CPEN455Dataset(root_dir=args.data_dir, mode=args.mode, transform=ds_transforms)
+    df=pd.read_csv('test.csv')
+    label_tensor=np.array(label_tensor)
+    # Check if label_tensor length matches the number of rows
+    if len(label_tensor) != len(df):
+        raise ValueError("label_tensor length must match the number of rows in the CSV")
 
-    # Use a DataLoader with a batch size of 1 and no shuffling so that the order of
-    # the samples corresponds to the order in test_dataset.files.
-    test_loader = torch.utils.data.DataLoader(test_dataset,
-                                            batch_size=1,
-                                            shuffle=False,
-                                            **kwargs)
+    # Overwrite the second column (index 1) with label_tensor values
+    df.iloc[:, 1] = label_tensor
 
-    predictions = []
-
-    # We don't need to compute gradients in evaluation.
-    with torch.no_grad():
-        # Iterate over the test data.
-        for idx, (image, categories) in enumerate(tqdm(test_loader)):
-            image = image.to(device)
-            # Get the predicted label (a tensor of shape (1,)) for the single image.
-            pred_tensor = get_label(model, image, device)
-            pred_label = int(pred_tensor.item())
-            
-            # Retrieve the image path from the dataset. This example assumes that 
-            # CPEN455Dataset stores the list of file paths in an attribute called "files".
-            # (If your dataset returns file paths with each item, adjust accordingly.)
-            image_path = test_dataset.files[idx]
-            
-            predictions.append([image_path, pred_label])
-
-    # Write predictions into output.csv file.
-    import csv
-    with open("output.csv", "w", newline="") as csvfile:
-        writer = csv.writer(csvfile)
-        # Write header row.
-        writer.writerow(["image_path", "class_label"])
-        # Write each row: first column the image file path, second column the predicted label.
-        writer.writerows(predictions)
-
-    print("Predictions have been saved to output.csv")        
+    # Save the modified dataframe back to the CSV
+    df.to_csv('./data/test.csv', index=False)
+        
+       
