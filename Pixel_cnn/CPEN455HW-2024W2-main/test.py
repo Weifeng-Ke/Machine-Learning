@@ -62,7 +62,7 @@ def classifier(model, data_loader, device):
         correct_num = torch.sum(answer == 7)
         acc_tracker.update(correct_num.item(), model_input.shape[0])
         answers.append(answer)
-    return acc_tracker.get_ratio(),answers.to(device)
+    return acc_tracker.get_ratio(),answers
 
         
 
