@@ -118,7 +118,7 @@ if __name__ == '__main__':
     try:
         # Ensure tensor is on CPU and convert to NumPy array (more robust)
         # Assuming label_tensor is a PyTorch tensor
-        labels_array = label_tensor.cpu().numpy()
+        labels_array = label_tensor.numpy()
 
         # Define the path to the CSV file
         csv_path = os.path.join(args.data_dir, 'test.csv') # Use data_dir from args
