@@ -102,37 +102,39 @@ if __name__ == '__main__':
     
     acc = classifier(model = model, data_loader = dataloader, device = device)
     print(f"Accuracy: {acc}")
-    
+
     # Create a new instance of the dataset in test (or validation) mode.
-# It is assumed that your CPEN455Dataset has an attribute 'files' that stores
-# the file path (name path) for each sample. If not, modify your dataset class accordingly.
-test_dataset = CPEN455Dataset(root_dir=args.data_dir, mode=args.mode, transform=ds_transforms)
+    # It is assumed that your CPEN455Dataset has an attribute 'files' that stores
+    # the file path (name path) for each sample. If not, modify your dataset class accordingly.
+    test_dataset = CPEN455Dataset(root_dir=args.data_dir, mode=args.mode, transform=ds_transforms)
 
-# Use a DataLoader with a batch size of 1 and no shuffling so that the order of
-# the samples corresponds to the order in test_dataset.files.
-test_loader = torch.utils.data.DataLoader(test_dataset,
-                                          batch_size=1,
-                                          shuffle=False,
-                                          **kwargs)
+    # Use a DataLoader with a batch size of 1 and no shuffling so that the order of
+    # the samples corresponds to the order in test_dataset.files.
+    test_loader = torch.utils.data.DataLoader(test_dataset,
+                                            batch_size=1,
+                                            shuffle=False,
+                                            **kwargs)
 
-predictions = []
+    predictions = []
 
-# We don't need to compute gradients in evaluation.
-with torch.no_grad():
-    # Iterate over the test data.
-    for idx, (image, categories) in enumerate(tqdm(test_loader)):
-        image = image.to(device)
-        # Get the predicted label (a tensor of shape (1,)) for the single image.
-        pred_tensor = get_label(model, image, device)
-        pred_label = int(pred_tensor.item())
-        
-        # Retrieve the image path from the dataset. This example assumes that 
-        # CPEN455Dataset stores the list of file paths in an attribute called "files".
-        # (If your dataset returns file paths with each item, adjust accordingly.)
-        image_path = test_dataset.files[idx]
-        
-        predictions.append([image_path, pred_label])
-        
+    # We don't need to compute gradients in evaluation.
+    with torch.no_grad():
+        # Iterate over the test data.
+        for idx, (image, categories) in enumerate(tqdm(test_loader)):
+            image = image.to(device)
+            # Get the predicted label (a tensor of shape (1,)) for the single image.
+            pred_tensor = get_label(model, image, device)
+            pred_label = int(pred_tensor.item())
+            
+            # Retrieve the image path from the dataset. This example assumes that 
+            # CPEN455Dataset stores the list of file paths in an attribute called "files".
+            # (If your dataset returns file paths with each item, adjust accordingly.)
+            image_path = test_dataset.files[idx]
+            
+            predictions.append([image_path, pred_label])
+
+    # Write predictions into output.csv file.
+    import csv
     with open("output.csv", "w", newline="") as csvfile:
         writer = csv.writer(csvfile)
         # Write header row.
@@ -140,6 +142,4 @@ with torch.no_grad():
         # Write each row: first column the image file path, second column the predicted label.
         writer.writerows(predictions)
 
-    print("Predictions have been saved to output.csv")
-    
-        
+    print("Predictions have been saved to output.csv")        
