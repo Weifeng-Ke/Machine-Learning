@@ -58,8 +58,8 @@ def classifier(model, data_loader, device):
         #original_label = torch.tensor(original_label, dtype=torch.int64).to(device)
         answer = get_label(model, model_input, device)
         
-        #correct_num = torch.sum(answer == original_label)
-        #acc_tracker.update(correct_num.item(), model_input.shape[0])
+        correct_num = torch.sum(answer == 519)
+        acc_tracker.update(correct_num.item(), model_input.shape[0])
     
     return acc_tracker.get_ratio(),answer
 
