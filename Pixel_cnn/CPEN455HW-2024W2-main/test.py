@@ -149,7 +149,7 @@ if __name__ == '__main__':
     model.eval()
     
     # Pass the mode to the classifier function
-    acc, label_tensor = classifier(model=model, data_loader=dataloader, device=device, mode=args.mode) # <--- Pass args.mode
+    acc, label_tensor = classifier(model=model, data_loader=dataloader, device=device, mode=args.mode) 
 
     # Only print accuracy if it was calculated (i.e., not in 'test' mode)
     if args.mode != 'test':
