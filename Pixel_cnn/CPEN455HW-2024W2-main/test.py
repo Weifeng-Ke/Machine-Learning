@@ -110,7 +110,7 @@ if __name__ == '__main__':
     model.eval()
     
     acc,label_tensor = classifier(model = model, data_loader = dataloader, device = device)
-    print(f"Accuracy: {acc}")
+    print(f"Accuracy: {acc},label is {label_tensor}")
     
     #predicted_labels=label_tensor.tolist()
 
