@@ -83,7 +83,7 @@ if __name__ == '__main__':
     #model = random_classifier(NUM_CLASSES)
     input_channels=3
     model = PixelCNN(nr_resnet=4, nr_filters=120, 
-                input_channels=input_channels, nr_logistic_mix=20, embedding_dim=32)
+                input_channels=input_channels, nr_logistic_mix=10, embedding_dim=32)
     
     #End of your code
     

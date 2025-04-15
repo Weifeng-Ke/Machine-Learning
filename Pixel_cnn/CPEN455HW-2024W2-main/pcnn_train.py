@@ -161,8 +161,8 @@ if __name__ == '__main__':
         transforms.Resize((32, 32)),
         # --- Add Augmentations Here ---
         transforms.RandomHorizontalFlip(p=0.1), # Example: Randomly flip images horizontally 10% of the time
-        transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.1), # Example: Adjust color slightly
-        #transforms.RandomRotation(degrees=180), # Example: Rotate randomly up to 10 degrees
+        #transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.1), # Example: Adjust color slightly
+        transforms.RandomRotation(degrees=90), # Example: Rotate randomly up to 90 degrees
         # --- End Augmentations ---
         rescaling # Apply rescaling AFTER augmentations (usually)
         ])
