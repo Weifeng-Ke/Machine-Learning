@@ -109,16 +109,43 @@ if __name__ == '__main__':
     
     #predicted_labels=label_tensor.tolist()
 
-    df=pd.read_csv('test.csv')
-    label_tensor=np.array(label_tensor)
-    # Check if label_tensor length matches the number of rows
-    if len(label_tensor) != len(df):
-        raise ValueError("label_tensor length must match the number of rows in the CSV")
+    print("\nAttempting to write predicted labels to data/test.csv...")
+    try:
+        # Ensure tensor is on CPU and convert to NumPy array (more robust)
+        # Assuming label_tensor is a PyTorch tensor
+        labels_array = label_tensor.cpu().numpy()
 
-    # Overwrite the second column (index 1) with label_tensor values
-    df.iloc[:, 1] = label_tensor
+        # Define the path to the CSV file
+        csv_path = os.path.join(args.data_dir, 'test.csv') # Use data_dir from args
 
-    # Save the modified dataframe back to the CSV
-    df.to_csv('./data/test.csv', index=False)
+        # Read the target CSV using pandas
+        df = pd.read_csv(csv_path)
+
+        # --- Verification Step (Important!) ---
+        # Check if the number of predicted labels matches the number of rows in the CSV
+        if len(labels_array) != len(df):
+            raise ValueError(f"Length mismatch: Number of predicted labels ({len(labels_array)}) "
+                            f"does not match the number of rows in '{csv_path}' ({len(df)}).")
+        # --- End Verification Step ---
+
+        # Replace the content of the second column (index 1) with the predicted labels
+        # .iloc is used for integer-location based indexing
+        df.iloc[:, 1] = labels_array
+
+        # Save the modified DataFrame back to the original CSV file path
+        # index=False prevents pandas from writing the DataFrame index as a new column
+        df.to_csv(csv_path, index=False)
+
+        print(f"Successfully updated '{csv_path}' with predicted labels.")
+
+    except FileNotFoundError:
+        print(f"Error: The file '{csv_path}' was not found.")
+    except ValueError as e:
+        print(f"Error: {e}")
+    except ImportError:
+        print("Error: pandas library not found. Make sure it's installed (pip install pandas).")
+    except Exception as e:
+        print(f"An unexpected error occurred during CSV writing: {e}")
+
         
        
