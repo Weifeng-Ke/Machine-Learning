@@ -56,12 +56,12 @@ def classifier(model, data_loader, device):
         model_input = model_input.to(device)
         #original_label = [value for item, value in categories]
         #original_label = torch.tensor(original_label, dtype=torch.int64).to(device)
-        answer = get_label(model, model_input, device)
+        answer+=get_label(model, model_input, device)
         
         correct_num = torch.sum(answer == 518)
         acc_tracker.update(correct_num.item(), model_input.shape[0])
     
-    return acc_tracker.get_ratio(),answer
+    return acc_tracker.get_ratio(),answer.to(device)
 
         
 
@@ -118,7 +118,7 @@ if __name__ == '__main__':
     try:
         # Ensure tensor is on CPU and convert to NumPy array (more robust)
         # Assuming label_tensor is a PyTorch tensor
-        labels_array = label_tensor.numpy()
+        labels_array = label_tensor.tolist()
 
         # Define the path to the CSV file
         csv_path = os.path.join(args.data_dir, 'test.csv') # Use data_dir from args
