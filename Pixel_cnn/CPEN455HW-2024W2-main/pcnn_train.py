@@ -157,9 +157,18 @@ if __name__ == '__main__':
     
     elif "cpen455" in args.dataset:
         ds_transforms = transforms.Compose([transforms.Resize((32, 32)), rescaling])
+        transform_train = transforms.Compose([
+        transforms.Resize((32, 32)),
+        # --- Add Augmentations Here ---
+        transforms.RandomHorizontalFlip(p=0.5), # Example: Randomly flip images horizontally 50% of the time
+        transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.1), # Example: Adjust color slightly
+        transforms.RandomRotation(degrees=10), # Example: Rotate randomly up to 10 degrees
+        # --- End Augmentations ---
+        rescaling # Apply rescaling AFTER augmentations (usually)
+        ])
         train_loader = torch.utils.data.DataLoader(CPEN455Dataset(root_dir=args.data_dir, 
                                                                   mode = 'train', 
-                                                                  transform=ds_transforms), 
+                                                                  transform=transform_train), 
                                                    batch_size=args.batch_size, 
                                                    shuffle=True, 
                                                    **kwargs)
