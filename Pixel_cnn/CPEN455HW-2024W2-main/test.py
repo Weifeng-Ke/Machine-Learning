@@ -66,7 +66,7 @@ def get_label(model, model_input, device):
 def classifier(model, data_loader, device, mode='test'): # Add 'mode' parameter
     model.eval()
     acc_tracker = ratio_tracker()
-    all_predictions = [] # <--- Initialize list to store all predictions
+    all_predictions = [] # initialize list to store all predictions
 
     for batch_idx, item in enumerate(tqdm(data_loader)):
         model_input, categories = item
@@ -77,7 +77,7 @@ def classifier(model, data_loader, device, mode='test'): # Add 'mode' parameter
 
         # Append predictions for this batch to the master list
         # Use .cpu().tolist() to detach from graph, move to CPU, and convert to list
-        all_predictions.extend(answer.cpu().tolist()) # <--- Accumulate predictions
+        all_predictions.extend(answer.cpu().tolist()) #Accumulate predictions
 
         # --- Accuracy Calculation (Only run if NOT in 'test' mode) ---
         if mode != 'test':
@@ -124,7 +124,7 @@ if __name__ == '__main__':
                                                             mode = args.mode, 
                                                             transform=ds_transforms), 
                                              batch_size=args.batch_size, 
-                                             shuffle=True, 
+                                             shuffle=False, 
                                              **kwargs)
 
     #TODO:Begin of your code
