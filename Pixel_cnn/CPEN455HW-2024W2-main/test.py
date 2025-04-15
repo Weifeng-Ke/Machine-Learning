@@ -164,7 +164,7 @@ if __name__ == '__main__':
         labels_array = label_tensor.numpy() # Convert the full tensor
 
         csv_path = os.path.join(args.data_dir, 'test.csv')
-        df = pd.read_csv(csv_path)
+        df = pd.read_csv(csv_path, header=None)
 
         if len(labels_array) != len(df):
             raise ValueError(f"Length mismatch: Number of predicted labels ({len(labels_array)}) "
