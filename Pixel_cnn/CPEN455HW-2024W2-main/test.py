@@ -48,6 +48,21 @@ def get_label(model, model_input, device):
     return torch.tensor(answers).to(device)
 # End of your code
 
+# def classifier(model, data_loader, device):
+#     model.eval()
+#     acc_tracker = ratio_tracker()
+#     answers=[]
+#     for batch_idx, item in enumerate(tqdm(data_loader)):
+#         model_input, categories = item
+#         model_input = model_input.to(device)
+#         #original_label = [value for item, value in categories]
+#         #original_label = torch.tensor(original_label, dtype=torch.int64).to(device)
+#         answer=(get_label(model, model_input, device))
+        
+#         correct_num = torch.sum(answer == 7)
+#         acc_tracker.update(correct_num.item(), model_input.shape[0])
+#         answers.append(answer)
+#     return acc_tracker.get_ratio(),answers
 def classifier(model, data_loader, device, mode='test'): # Add 'mode' parameter
     model.eval()
     acc_tracker = ratio_tracker()
@@ -87,14 +102,52 @@ def classifier(model, data_loader, device, mode='test'): # Add 'mode' parameter
     # Return accuracy (or -1 if not calculated) and the *full* prediction tensor
     accuracy = acc_tracker.get_ratio() if mode != 'test' else -1.0
     return accuracy, final_predictions_tensor # <--- Return all predictions
-
-# Modify the call site in the if __name__ == '__main__': block
+        
 
 if __name__ == '__main__':
-    # ... (parser setup, dataloader setup, model loading) ...
+    parser = argparse.ArgumentParser()
+    
+    parser.add_argument('-i', '--data_dir', type=str,
+                        default='data', help='Location for the dataset')
+    parser.add_argument('-b', '--batch_size', type=int,
+                        default=32, help='Batch size for inference')
+    parser.add_argument('-m', '--mode', type=str,
+                        default='test', help='Mode for the dataset')
+    
+    args = parser.parse_args()
+    pprint(args.__dict__)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    kwargs = {'num_workers':0, 'pin_memory':True, 'drop_last':False}
 
+    ds_transforms = transforms.Compose([transforms.Resize((32, 32)), rescaling])
+    dataloader = torch.utils.data.DataLoader(CPEN455Dataset(root_dir=args.data_dir, 
+                                                            mode = args.mode, 
+                                                            transform=ds_transforms), 
+                                             batch_size=args.batch_size, 
+                                             shuffle=True, 
+                                             **kwargs)
+
+    #TODO:Begin of your code
+    #You should replace the random classifier with your trained model
+    #model = random_classifier(NUM_CLASSES)
+    input_channels=3
+    model = PixelCNN(nr_resnet=3, nr_filters=100, 
+                input_channels=input_channels, nr_logistic_mix=20, embedding_dim=32)
+    
+    #End of your code
+    
+    model = model.to(device)
+    #Attention: the path of the model is fixed to './models/conditional_pixelcnn.pth'
+    #You should save your model to this path
+    model_path = os.path.join(os.path.dirname(__file__), 'models/conditional_pixelcnn.pth')
+    if os.path.exists(model_path):
+        model.load_state_dict(torch.load(model_path))
+        print('model parameters loaded')
+        print(f"model we are evaluating on is {model_path}")
+    else:
+        raise FileNotFoundError(f"Model file not found at {model_path}")
     model.eval()
-
+    
     # Pass the mode to the classifier function
     acc, label_tensor = classifier(model=model, data_loader=dataloader, device=device, mode=args.mode) # <--- Pass args.mode
 
@@ -111,7 +164,7 @@ if __name__ == '__main__':
         labels_array = label_tensor.numpy() # Convert the full tensor
 
         csv_path = os.path.join(args.data_dir, 'test.csv')
-        df = pd.read_csv(csv_path)
+        df = pd.read_csv(csv_path, header=None)
 
         if len(labels_array) != len(df):
             raise ValueError(f"Length mismatch: Number of predicted labels ({len(labels_array)}) "
@@ -129,5 +182,6 @@ if __name__ == '__main__':
         print("Error: pandas library not found. Make sure it's installed (pip install pandas).")
     except Exception as e:
         print(f"An unexpected error occurred during CSV writing: {e}")
+
         
        
