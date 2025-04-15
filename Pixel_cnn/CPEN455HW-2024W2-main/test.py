@@ -14,9 +14,11 @@ from torchvision import datasets, transforms
 from utils import *
 from model import * 
 from dataset import *
+from dataset import my_bidict
 from tqdm import tqdm
 from pprint import pprint
 import argparse
+from bidict import bidict
 import csv
 import pandas as pd
 NUM_CLASSES = len(my_bidict)
