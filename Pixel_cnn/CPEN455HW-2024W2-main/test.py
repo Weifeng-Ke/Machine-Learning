@@ -48,22 +48,60 @@ def get_label(model, model_input, device):
     return torch.tensor(answers).to(device)
 # End of your code
 
-def classifier(model, data_loader, device):
+# def classifier(model, data_loader, device):
+#     model.eval()
+#     acc_tracker = ratio_tracker()
+#     answers=[]
+#     for batch_idx, item in enumerate(tqdm(data_loader)):
+#         model_input, categories = item
+#         model_input = model_input.to(device)
+#         #original_label = [value for item, value in categories]
+#         #original_label = torch.tensor(original_label, dtype=torch.int64).to(device)
+#         answer=(get_label(model, model_input, device))
+        
+#         correct_num = torch.sum(answer == 7)
+#         acc_tracker.update(correct_num.item(), model_input.shape[0])
+#         answers.append(answer)
+#     return acc_tracker.get_ratio(),answers
+def classifier(model, data_loader, device, mode='test'): # Add 'mode' parameter
     model.eval()
     acc_tracker = ratio_tracker()
-    answers=[]
+    all_predictions = [] # <--- Initialize list to store all predictions
+
     for batch_idx, item in enumerate(tqdm(data_loader)):
         model_input, categories = item
         model_input = model_input.to(device)
-        #original_label = [value for item, value in categories]
-        #original_label = torch.tensor(original_label, dtype=torch.int64).to(device)
-        answer=(get_label(model, model_input, device))
-        
-        correct_num = torch.sum(answer == 7)
-        acc_tracker.update(correct_num.item(), model_input.shape[0])
-        answers.append(answer)
-    return acc_tracker.get_ratio(),answers
 
+        # Get predictions for the current batch
+        answer = get_label(model, model_input, device)
+
+        # Append predictions for this batch to the master list
+        # Use .cpu().tolist() to detach from graph, move to CPU, and convert to list
+        all_predictions.extend(answer.cpu().tolist()) # <--- Accumulate predictions
+
+        # --- Accuracy Calculation (Only run if NOT in 'test' mode) ---
+        if mode != 'test':
+            try:
+                # Get original labels ONLY if not in test mode
+                original_label = [my_bidict[cat] for cat in categories] # Use my_bidict
+                original_label = torch.tensor(original_label, dtype=torch.int64).to(device)
+
+                # Calculate correct predictions for the batch
+                correct_num = torch.sum(answer == original_label)
+                acc_tracker.update(correct_num.item(), model_input.shape[0])
+            except KeyError as e:
+                # Handle cases where validation/train data might have unexpected categories
+                print(f"\nWarning: Encountered invalid category '{e}' during accuracy calculation. Skipping accuracy update for this batch.")
+            except Exception as e:
+                 print(f"\nWarning: Error during accuracy calculation: {e}. Skipping update.")
+        # --- End Accuracy Calculation ---
+
+    # After the loop, convert the list of all predictions to a single tensor
+    final_predictions_tensor = torch.tensor(all_predictions) # <--- Create the final tensor
+
+    # Return accuracy (or -1 if not calculated) and the *full* prediction tensor
+    accuracy = acc_tracker.get_ratio() if mode != 'test' else -1.0
+    return accuracy, final_predictions_tensor # <--- Return all predictions
         
 
 if __name__ == '__main__':
@@ -110,38 +148,30 @@ if __name__ == '__main__':
         raise FileNotFoundError(f"Model file not found at {model_path}")
     model.eval()
     
-    acc,label_tensor = classifier(model = model, data_loader = dataloader, device = device)
-    print(f"Accuracy: {acc},label is {label_tensor}, and size of label tensor is {len(label_tensor)}")
-    
-    #predicted_labels=label_tensor.tolist()
+    # Pass the mode to the classifier function
+    acc, label_tensor = classifier(model=model, data_loader=dataloader, device=device, mode=args.mode) # <--- Pass args.mode
 
+    # Only print accuracy if it was calculated (i.e., not in 'test' mode)
+    if args.mode != 'test':
+         print(f"Accuracy: {acc}")
+    else:
+         print(f"Accuracy: N/A (running in '{args.mode}' mode)") # <--- Indicate accuracy isn't available
+
+    # --- Keep the CSV writing code as is ---
     print("\nAttempting to write predicted labels to data/test.csv...")
     try:
-        # Ensure tensor is on CPU and convert to NumPy array (more robust)
-        # Assuming label_tensor is a PyTorch tensor
-        labels_array = label_tensor
+        # labels_array = label_tensor.cpu().numpy() #<-- No need for .cpu() if tensor created from list
+        labels_array = label_tensor.numpy() # Convert the full tensor
 
-        # Define the path to the CSV file
-        csv_path = os.path.join(args.data_dir, 'test.csv') # Use data_dir from args
-
-        # Read the target CSV using pandas
+        csv_path = os.path.join(args.data_dir, 'test.csv')
         df = pd.read_csv(csv_path)
 
-        # --- Verification Step (Important!) ---
-        # Check if the number of predicted labels matches the number of rows in the CSV
         if len(labels_array) != len(df):
             raise ValueError(f"Length mismatch: Number of predicted labels ({len(labels_array)}) "
-                            f"does not match the number of rows in '{csv_path}' ({len(df)}).")
-        # --- End Verification Step ---
+                             f"does not match the number of rows in '{csv_path}' ({len(df)}).")
 
-        # Replace the content of the second column (index 1) with the predicted labels
-        # .iloc is used for integer-location based indexing
         df.iloc[:, 1] = labels_array
-
-        # Save the modified DataFrame back to the original CSV file path
-        # index=False prevents pandas from writing the DataFrame index as a new column
         df.to_csv(csv_path, index=False)
-
         print(f"Successfully updated '{csv_path}' with predicted labels.")
 
     except FileNotFoundError:
