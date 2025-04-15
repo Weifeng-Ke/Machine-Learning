@@ -51,18 +51,18 @@ def get_label(model, model_input, device):
 def classifier(model, data_loader, device):
     model.eval()
     acc_tracker = ratio_tracker()
-    answer=[]
+    answers=[]
     for batch_idx, item in enumerate(tqdm(data_loader)):
         model_input, categories = item
         model_input = model_input.to(device)
         #original_label = [value for item, value in categories]
         #original_label = torch.tensor(original_label, dtype=torch.int64).to(device)
-        answer.append(get_label(model, model_input, device))
+        answer=(get_label(model, model_input, device))
         
-        correct_num = torch.sum(answer == 518)
+        correct_num = torch.sum(answer == 7)
         acc_tracker.update(correct_num.item(), model_input.shape[0])
-    
-    return acc_tracker.get_ratio(),answer.to(device)
+        answers.append(answer)
+    return acc_tracker.get_ratio(),answers.to(device)
 
         
 
