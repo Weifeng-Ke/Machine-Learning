@@ -26,12 +26,16 @@ Step 5: Train substring matching
 Implement a Variational Autoencoder VAE model from Scratch
 Step 1: Implement Gaussian Likelihood computation
 ![image](https://github.com/user-attachments/assets/472ffda4-52df-42d1-9466-db50d8852c53)
+
 Step 2: Implement Monte-Carlo Approximation of KL Divergence
 ![image](https://github.com/user-attachments/assets/a8ee978e-035d-48e2-82d2-57a83bdd2936)
+
 Step 3: Implement exact KL divergence
 ![image](https://github.com/user-attachments/assets/2244982d-4898-4235-bf9e-eff591290715)
+
 Step 4: Implement ELBO loss
 ![image](https://github.com/user-attachments/assets/d94b46a4-fd2f-4c58-84ab-219f2adc8899)
+
 Step 5: Build and Train the VAE Model
 
 
