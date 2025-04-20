@@ -34,6 +34,7 @@ Step 3: Implement exact KL divergence
 ![image](https://github.com/user-attachments/assets/2244982d-4898-4235-bf9e-eff591290715)
 
 Step 4: Implement ELBO loss
+
 ![image](https://github.com/user-attachments/assets/d94b46a4-fd2f-4c58-84ab-219f2adc8899)
 
 Step 5: Build and Train the VAE Model
