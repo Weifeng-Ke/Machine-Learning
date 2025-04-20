@@ -14,6 +14,7 @@ Implement the gradient of 2D convolution
 Implement a Transformer architecture from scratch.
 Implement the transformer and train it on a small task. 
 The task is to check if the input strings contain 'c' 'p' 'e' 'n' in the correct order. 
+
 ![image](https://github.com/user-attachments/assets/cb53611b-cb38-4ab1-a936-6b3220095f32)
 
 Step 1: Preprocessing and Tokenization
